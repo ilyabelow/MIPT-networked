@@ -4,6 +4,7 @@
 #include <enet/enet.h>
 
 #include <vector>
+#include <cstdio>
 #include "entity.h"
 #include "protocol.h"
 
@@ -68,8 +69,8 @@ int main(int argc, const char **argv)
     return 1;
   }
 
-  int width = 1920;
-  int height = 1080;
+  int width = 500;
+  int height = 500;
   InitWindow(width, height, "w6 AI MIPT");
 
   const int scrWidth = GetMonitorWidth(0);
@@ -116,6 +117,7 @@ int main(int argc, const char **argv)
           on_snapshot(event.packet);
           break;
         };
+        enet_packet_destroy(event.packet);
         break;
       default:
         break;
