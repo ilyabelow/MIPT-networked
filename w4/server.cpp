@@ -106,7 +106,7 @@ int main(int argc, const char **argv)
         if (controlledMap[e.eid] != peer)
           send_snapshot(peer, e.eid, e.x, e.y);
       }
-    //usleep(400000);
+    usleep(10000);
   }
 
   enet_host_destroy(server);
