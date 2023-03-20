@@ -2,12 +2,13 @@
 #include <algorithm> // min/max
 #include "raylib.h"
 #include <enet/enet.h>
+#include <cmath>
 
 #include <vector>
 #include <cstdio>
 #include "entity.h"
 #include "protocol.h"
-
+#include "screen.h"
 
 static std::vector<Entity> entities;
 static uint16_t my_entity = invalid_entity;
@@ -69,8 +70,8 @@ int main(int argc, const char **argv)
     return 1;
   }
 
-  int width = 500;
-  int height = 500;
+  int width = SCREEN_WIDTH;
+  int height = SCREEN_HEIGHT;
   InitWindow(width, height, "w6 AI MIPT");
 
   const int scrWidth = GetMonitorWidth(0);
@@ -134,11 +135,19 @@ int main(int argc, const char **argv)
         if (e.eid == my_entity)
         {
           // Update
-          e.x += ((left ? -dt : 0.f) + (right ? +dt : 0.f)) * 100.f;
-          e.y += ((up ? -dt : 0.f) + (down ? +dt : 0.f)) * 100.f;
+          // COPYPASTE FROM AI!
+          float dx = ((left ? -1 : 0.f) + (right ? +1 : 0.f));
+          float dy = ((up ? -1 : 0.f) + (down ? +1 : 0.f));
+          float mag = sqrt(dx*dx + dy*dy);
+          if (mag < 0.01) { // no movement
+            break;
+          }
+          e.x += dx / mag * e.speed * dt;
+          e.y += dy / mag * e.speed * dt;
 
           // Send
           send_entity_state(serverPeer, my_entity, e.x, e.y);
+          break;
         }
     }
 

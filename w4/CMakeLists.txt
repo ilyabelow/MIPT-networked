@@ -16,7 +16,8 @@ set(W4_SOURCES
 set(W4_SERVER_SOURCES
     server.cpp
     protocol.cpp
-    )
+    ai.cpp
+        screen.h)
 
 
 include_directories("../3rdParty/enet/include")

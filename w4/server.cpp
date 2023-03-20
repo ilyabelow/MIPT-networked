@@ -2,12 +2,34 @@
 #include <iostream>
 #include "entity.h"
 #include "protocol.h"
-#include <stdlib.h>
+#include "ai.h"
+#include "screen.h"
+#include <cstdlib>
 #include <vector>
 #include <map>
+#include <chrono>
 
 static std::vector<Entity> entities;
-static std::map<uint16_t, ENetPeer*> controlledMap;
+static std::map<uint16_t, ENetPeer*> playerControlled;
+static std::map<uint16_t, ai> aiControlled;
+
+
+Entity& create_entity() {
+  // find max eid
+  uint16_t maxEid = entities.empty() ? invalid_entity : entities[0].eid;
+  for (const Entity &e : entities)
+    maxEid = std::max(maxEid, e.eid);
+  uint16_t newEid = maxEid + 1;
+  uint32_t color = 0x44000000 * (rand() % 5) +
+                   0x00440000 * (rand() % 5) +
+                   0x00004400 * (rand() % 5) +
+                   0x000000a0;
+  float x = rand() % 200 - 100;
+  float y = rand() % 200 - 100;
+  Entity ent = {color, x, y, newEid};
+  entities.push_back(ent);
+  return entities[entities.size()-1];
+}
 
 void on_join(ENetPacket *packet, ENetPeer *peer, ENetHost *host)
 {
@@ -15,28 +37,15 @@ void on_join(ENetPacket *packet, ENetPeer *peer, ENetHost *host)
   for (const Entity &ent : entities)
     send_new_entity(peer, ent);
 
-  // find max eid
-  uint16_t maxEid = entities.empty() ? invalid_entity : entities[0].eid;
-  for (const Entity &e : entities)
-    maxEid = std::max(maxEid, e.eid);
-  uint16_t newEid = maxEid + 1;
-  uint32_t color = 0xff000000 +
-                   0x00440000 * (rand() % 5) +
-                   0x00004400 * (rand() % 5) +
-                   0x00000044 * (rand() % 5);
-  float x = (rand() % 4) * 2.f;
-  float y = (rand() % 4) * 2.f;
-  Entity ent = {color, x, y, newEid};
-  entities.push_back(ent);
-
-  controlledMap[newEid] = peer;
-
+  // create entity
+  Entity& ent = create_entity();
+  playerControlled[ent.eid] = peer;
 
   // send info about new entity to everyone
   for (size_t i = 0; i < host->peerCount; ++i)
     send_new_entity(&host->peers[i], ent);
   // send info about controlled entity
-  send_set_controlled_entity(peer, newEid);
+  send_set_controlled_entity(peer, ent.eid);
 }
 
 void on_state(ENetPacket *packet)
@@ -52,8 +61,19 @@ void on_state(ENetPacket *packet)
     }
 }
 
+void add_ai() {
+  Entity& ent = create_entity();
+  aiControlled.insert(std::make_pair(ent.eid, ai(-SCREEN_WIDTH/2, SCREEN_WIDTH/2, -SCREEN_HEIGHT/2, SCREEN_HEIGHT/2)));
+}
+
+float get_time() {
+  // I hate std::chrono
+  return (float) std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count() / 1000.f;
+}
+
 int main(int argc, const char **argv)
 {
+  srand(clock());
   if (enet_initialize() != 0)
   {
     printf("Cannot init ENet");
@@ -71,7 +91,10 @@ int main(int argc, const char **argv)
     printf("Cannot create ENet server\n");
     return 1;
   }
-
+  for (int i = 0; i < 3; ++i) {
+    add_ai();
+  }
+  float time = get_time();
   while (true)
   {
     ENetEvent event;
@@ -98,14 +121,19 @@ int main(int argc, const char **argv)
         break;
       };
     }
-    static int t = 0;
-    for (const Entity &e : entities)
+
+    for (Entity &e : entities) {
+      if (aiControlled.contains(e.eid)) {
+        aiControlled.find(e.eid)->second.move(e, get_time() - time);
+      }
       for (size_t i = 0; i < server->peerCount; ++i)
       {
         ENetPeer *peer = &server->peers[i];
-        if (controlledMap[e.eid] != peer)
+        if (!playerControlled.contains(e.eid) || playerControlled.find(e.eid)->second != peer)
           send_snapshot(peer, e.eid, e.x, e.y);
       }
+    }
+    time = get_time();
     usleep(10000);
   }
 
