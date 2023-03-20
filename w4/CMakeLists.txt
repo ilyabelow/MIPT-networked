@@ -9,7 +9,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 SET(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 set(W4_SOURCES
-    main.cpp
+    client.cpp
     protocol.cpp
     )
 
