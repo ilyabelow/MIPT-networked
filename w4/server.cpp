@@ -14,7 +14,7 @@ static std::map<uint16_t, ENetPeer*> playerControlled;
 static std::map<uint16_t, ai> aiControlled;
 
 
-Entity& create_entity() {
+Entity& create_entity(float speed) {
   // find max eid
   uint16_t maxEid = entities.empty() ? invalid_entity : entities[0].eid;
   for (const Entity &e : entities)
@@ -26,7 +26,7 @@ Entity& create_entity() {
                    0x000000a0;
   float x = rand() % 200 - 100;
   float y = rand() % 200 - 100;
-  Entity ent = {color, x, y, newEid};
+  Entity ent = {color, x, y, newEid, (((float) rand() / RAND_MAX) * 4 + 1) * 10, speed};
   entities.push_back(ent);
   return entities[entities.size()-1];
 }
@@ -38,7 +38,7 @@ void on_join(ENetPacket *packet, ENetPeer *peer, ENetHost *host)
     send_new_entity(peer, ent);
 
   // create entity
-  Entity& ent = create_entity();
+  Entity& ent = create_entity(110); // advantage to the player for easier tests
   playerControlled[ent.eid] = peer;
 
   // send info about new entity to everyone
@@ -61,10 +61,44 @@ void on_state(ENetPacket *packet)
     }
 }
 
-void add_ai() {
-  Entity& ent = create_entity();
+void add_ai(ENetHost* host) {
+  Entity& ent = create_entity(100.f);
   aiControlled.insert(std::make_pair(ent.eid, ai(-SCREEN_WIDTH/2, SCREEN_WIDTH/2, -SCREEN_HEIGHT/2, SCREEN_HEIGHT/2)));
+  // send info about new entity to everyone
+  for (size_t i = 0; i < host->peerCount; ++i)
+    send_new_entity(&host->peers[i], ent);
 }
+
+void consume_entity(Entity& consumer, Entity& consumed) {
+  consumer.size += consumed.size / 2;
+  consumed.size /= 2;
+  // dirty copypaste from ai
+  consumed.x =  -SCREEN_WIDTH / 2.f + (rand() / (float) RAND_MAX) * SCREEN_WIDTH;
+  consumed.y = -SCREEN_HEIGHT / 2.f + (rand() / (float) RAND_MAX) * SCREEN_HEIGHT;
+
+  consumed.changed_size = true;
+  consumer.changed_size = true;
+
+  if (aiControlled.contains(consumed.eid)) {
+    aiControlled.find(consumed.eid)->second.was_teleported();
+  }
+}
+
+void collide_entity(Entity& ent) {
+  for (Entity &other : entities) {
+    if (other.eid == ent.eid) continue;
+    float dist = ent.size / 2 + other.size / 2;
+    if (abs(other.x - ent.x) <= dist && abs(other.y - ent.y) <= dist) {
+      if (ent.size < other.size) {
+        consume_entity(other, ent);
+      } else {
+        consume_entity(ent, other);
+      }
+      break;
+    }
+  }
+}
+
 
 float get_time() {
   // I hate std::chrono
@@ -92,9 +126,11 @@ int main(int argc, const char **argv)
     return 1;
   }
   for (int i = 0; i < 3; ++i) {
-    add_ai();
+    add_ai(server);
   }
   float time = get_time();
+  const float ai_countdown = 5;
+  float ai_timer = ai_countdown;
   while (true)
   {
     ENetEvent event;
@@ -121,18 +157,31 @@ int main(int argc, const char **argv)
         break;
       };
     }
+    float dt = get_time() - time;
 
     for (Entity &e : entities) {
       if (aiControlled.contains(e.eid)) {
-        aiControlled.find(e.eid)->second.move(e, get_time() - time);
+        aiControlled.find(e.eid)->second.move(e, dt);
       }
+      collide_entity(e);
       for (size_t i = 0; i < server->peerCount; ++i)
       {
         ENetPeer *peer = &server->peers[i];
-        if (!playerControlled.contains(e.eid) || playerControlled.find(e.eid)->second != peer)
-          send_snapshot(peer, e.eid, e.x, e.y);
+        bool controlled_by_current_peer = playerControlled.contains(e.eid) && playerControlled.find(e.eid)->second == peer;
+        if (!controlled_by_current_peer || e.changed_size)
+          send_snapshot(peer, e.eid, e.x, e.y, e.size);
       }
     }
+    for (Entity &e : entities) {
+      e.changed_size = false;
+    }
+    // spawn new ais
+    ai_timer -= dt;
+    if (ai_timer <= 0) {
+      ai_timer = ai_countdown;
+      add_ai(server);
+    }
+
     time = get_time();
     usleep(10000);
   }
@@ -142,5 +191,4 @@ int main(int argc, const char **argv)
   atexit(enet_deinitialize);
   return 0;
 }
-
 

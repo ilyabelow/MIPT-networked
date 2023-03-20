@@ -33,11 +33,11 @@ void send_entity_state(ENetPeer *peer, uint16_t eid, float x, float y)
   enet_peer_send(peer, 1, packet);
 }
 
-void send_snapshot(ENetPeer *peer, uint16_t eid, float x, float y)
+void send_snapshot(ENetPeer *peer, uint16_t eid, float x, float y, float s)
 {
-  size_t size = ruler() << E_SERVER_TO_CLIENT_SNAPSHOT << eid << x << y;
+  size_t size = ruler() << E_SERVER_TO_CLIENT_SNAPSHOT << eid << x << y << s;
   ENetPacket *packet = enet_packet_create(nullptr, size, ENET_PACKET_FLAG_UNSEQUENCED);
-  bitstream(packet->data) << E_SERVER_TO_CLIENT_SNAPSHOT << eid << x << y;
+  bitstream(packet->data) << E_SERVER_TO_CLIENT_SNAPSHOT << eid << x << y << s;
   enet_peer_send(peer, 1, packet);
 }
 
@@ -61,8 +61,8 @@ void deserialize_entity_state(ENetPacket *packet, uint16_t &eid, float &x, float
   bitstream(packet->data) >> MessageType() >> eid >> x >> y;
 }
 
-void deserialize_snapshot(ENetPacket *packet, uint16_t &eid, float &x, float &y)
+void deserialize_snapshot(ENetPacket *packet, uint16_t &eid, float &x, float &y, float &s)
 {
-  bitstream(packet->data) >> MessageType() >> eid >> x >> y;
+  bitstream(packet->data) >> MessageType() >> eid >> x >> y >> s;
 }
 
