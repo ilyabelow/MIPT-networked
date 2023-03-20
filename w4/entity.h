@@ -8,6 +8,8 @@ struct Entity
   float x = 0.f;
   float y = 0.f;
   uint16_t eid = invalid_entity;
+  float size = 10.f;
   float speed = 100.f;
+  bool changed_size = false;
 };
 

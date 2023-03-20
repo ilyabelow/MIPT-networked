@@ -24,3 +24,7 @@ void ai::move(Entity &host, float dt) {
   host.x += dx / mag * host.speed * dt;
   host.y += dy / mag * host.speed * dt;
 }
+
+void ai::was_teleported() {
+  add_new_target();
+}

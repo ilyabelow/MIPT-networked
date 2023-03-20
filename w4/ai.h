@@ -7,6 +7,8 @@ public:
   ai(int minX, int maxX, int minY, int maxY);
 
   void move(Entity &host, float dt);
+
+  void was_teleported();
 private:
   void add_new_target();
 
