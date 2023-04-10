@@ -22,7 +22,6 @@ void on_new_entity_packet(ENetPacket *packet)
     if (e.eid == newEntity.eid)
       return; // don't need to do anything, we already have entity
   entities.push_back(newEntity);
-  printf("new entity\n");
 }
 
 void on_set_controlled_entity(ENetPacket *packet)
