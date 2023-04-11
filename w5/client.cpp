@@ -3,9 +3,9 @@
 #include <functional>
 #include "raylib.h"
 #include <enet/enet.h>
-#include <math.h>
 
 #include <vector>
+#include <cstdio>
 #include "entity.h"
 #include "protocol.h"
 
