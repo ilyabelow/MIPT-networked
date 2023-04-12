@@ -6,13 +6,16 @@
 #include <stdlib.h>
 #include <vector>
 #include <map>
+#include <chrono>
 
 static std::vector<Entity> entities;
 static std::map<uint16_t, ENetPeer*> controlledMap;
+static const std::chrono::duration tick = std::chrono::microseconds(500000);
 
 void on_join(ENetPacket *packet, ENetPeer *peer, ENetHost *host)
 {
   // send all entities
+  send_clock(peer, steady_now(), tick);
   for (const Entity &ent : entities)
     send_new_entity(peer, ent);
 
@@ -72,13 +75,12 @@ int main(int argc, const char **argv)
     printf("Cannot create ENet server\n");
     return 1;
   }
-
-  uint32_t lastTime = enet_time_get();
+  auto prev_time = std::chrono::steady_clock::now();
   while (true)
   {
-    uint32_t curTime = enet_time_get();
-    float dt = (curTime - lastTime) * 0.001f;
-    lastTime = curTime;
+    auto cur_time = std::chrono::steady_clock::now();
+    duration_float dt = cur_time - prev_time;
+    prev_time = cur_time;
     ENetEvent event;
     while (enet_host_service(server, &event, 0) > 0)
     {
@@ -104,20 +106,22 @@ int main(int argc, const char **argv)
       };
     }
     static int t = 0;
+    auto now = steady_now();
     for (Entity &e : entities)
     {
       // simulate
-      simulate_entity(e, dt);
+      simulate_entity(e, dt.count());
       // send
       for (size_t i = 0; i < server->peerCount; ++i)
       {
         ENetPeer *peer = &server->peers[i];
         // skip this here in this implementation
         //if (controlledMap[e.eid] != peer)
-        send_snapshot(peer, e.eid, e.x, e.y, e.ori);
+        send_snapshot(peer, e.eid, e.get_snapshot(now));
       }
     }
-    usleep(100000);
+    enet_host_flush(server);
+    usleep(tick.count());
   }
 
   enet_host_destroy(server);

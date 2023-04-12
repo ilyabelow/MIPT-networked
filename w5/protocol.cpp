@@ -10,6 +10,14 @@ void send_join(ENetPeer *peer)
   enet_peer_send(peer, 0, packet);
 }
 
+void send_clock(ENetPeer *peer, time_point join_time, std::chrono::microseconds tick) {
+  size_t size = ruler() << E_SERVER_TO_CLIENT_CLOCK << join_time << tick;
+  ENetPacket *packet = enet_packet_create(nullptr, size, ENET_PACKET_FLAG_RELIABLE);
+  bitstream(packet->data) << E_SERVER_TO_CLIENT_CLOCK << join_time << tick;
+  enet_peer_send(peer, 0, packet);
+}
+
+
 void send_new_entity(ENetPeer *peer, const Entity &ent)
 {
   size_t size = ruler() << E_SERVER_TO_CLIENT_NEW_ENTITY << ent;
@@ -34,17 +42,21 @@ void send_entity_input(ENetPeer *peer, uint16_t eid, float thr, float steer)
   enet_peer_send(peer, 1, packet);
 }
 
-void send_snapshot(ENetPeer *peer, uint16_t eid, float x, float y, float ori)
+void send_snapshot(ENetPeer *peer, uint16_t eid, EntitySnapshot snapshot)
 {
-  size_t size = ruler() << E_SERVER_TO_CLIENT_SNAPSHOT << eid << x << y << ori;
+  size_t size = ruler() << E_SERVER_TO_CLIENT_SNAPSHOT << eid << snapshot;
   ENetPacket *packet = enet_packet_create(nullptr, size, ENET_PACKET_FLAG_UNSEQUENCED);
-  bitstream(packet->data) << E_SERVER_TO_CLIENT_SNAPSHOT << eid << x << y << ori;
+  bitstream(packet->data) << E_SERVER_TO_CLIENT_SNAPSHOT << eid << snapshot;
   enet_peer_send(peer, 1, packet);
 }
 
 MessageType get_packet_type(ENetPacket *packet)
 {
   return (MessageType)*packet->data;
+}
+
+void deserialize_clock(ENetPacket *packet, time_point &join_time, std::chrono::microseconds& tick) {
+  bitstream(packet->data) >> MessageType() >> join_time >> tick;
 }
 
 void deserialize_new_entity(ENetPacket *packet, Entity &ent)
@@ -62,8 +74,8 @@ void deserialize_entity_input(ENetPacket *packet, uint16_t &eid, float &thr, flo
   bitstream(packet->data) >> MessageType() >> eid >> thr >> steer;
 }
 
-void deserialize_snapshot(ENetPacket *packet, uint16_t &eid, float &x, float &y, float &ori)
+void deserialize_snapshot(ENetPacket *packet, uint16_t &eid, EntitySnapshot &snapshot)
 {
-  bitstream(packet->data) >> MessageType() >> eid >> x >> y >> ori;
+  bitstream(packet->data) >> MessageType() >> eid >> snapshot;
 }
 

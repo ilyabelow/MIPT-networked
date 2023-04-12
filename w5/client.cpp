@@ -6,17 +6,29 @@
 
 #include <vector>
 #include <cstdio>
+#include <iostream>
 #include "entity.h"
 #include "protocol.h"
 
 
-static std::vector<Entity> entities;
+static std::vector<EntityWithSnapshots> entities;
 static uint16_t my_entity = invalid_entity;
+static duration shift;
+static std::chrono::microseconds tick;
+static time_point start_time;
+
+void on_clock(ENetPacket *packet) {
+  auto client_time = steady_now();
+  time_point server_time;
+  deserialize_clock(packet, server_time, tick);
+  shift = client_time - server_time;
+}
 
 void on_new_entity_packet(ENetPacket *packet)
 {
-  Entity newEntity;
-  deserialize_new_entity(packet, newEntity);
+  Entity newEntityBase;
+  deserialize_new_entity(packet, newEntityBase);
+  EntityWithSnapshots newEntity(newEntityBase);
   // TODO: Direct adressing, of course!
   for (const Entity &e : entities)
     if (e.eid == newEntity.eid)
@@ -32,20 +44,20 @@ void on_set_controlled_entity(ENetPacket *packet)
 void on_snapshot(ENetPacket *packet)
 {
   uint16_t eid = invalid_entity;
-  float x = 0.f; float y = 0.f; float ori = 0.f;
-  deserialize_snapshot(packet, eid, x, y, ori);
+  EntitySnapshot snapshot;
+  deserialize_snapshot(packet, eid, snapshot);
+  snapshot.time += shift;
   // TODO: Direct adressing, of course!
-  for (Entity &e : entities)
+  for (EntityWithSnapshots &e : entities)
     if (e.eid == eid)
     {
-      e.x = x;
-      e.y = y;
-      e.ori = ori;
+      e.push_new_snapshot(snapshot);
     }
 }
 
 int main(int argc, const char **argv)
 {
+  start_time = steady_now();
   if (enet_initialize() != 0)
   {
     printf("Cannot init ENet");
@@ -119,6 +131,9 @@ int main(int argc, const char **argv)
         case E_SERVER_TO_CLIENT_SNAPSHOT:
           on_snapshot(event.packet);
           break;
+        case E_SERVER_TO_CLIENT_CLOCK:
+          on_clock(event.packet);
+          break;
         };
         break;
       default:
@@ -147,10 +162,20 @@ int main(int argc, const char **argv)
     BeginDrawing();
       ClearBackground(GRAY);
       BeginMode2D(camera);
-        for (const Entity &e : entities)
+        auto now = steady_now() - tick; // HERE! we shift time in the past
+        for (EntityWithSnapshots &e : entities)
         {
-          const Rectangle rect = {e.x, e.y, 3.f, 1.f};
-          DrawRectanglePro(rect, {0.f, 0.5f}, e.ori * 180.f / PI, GetColor(e.color));
+          {
+            e.actualize(now);
+            const Rectangle rect = {e.x, e.y, 3.f, 1.f};
+            DrawRectanglePro(rect, {0.f, 0.5f}, e.ori * 180.f / PI, GetColor(e.color));
+          }
+          {
+            e.just_use_latest();
+            const Rectangle rect = {e.x, e.y, 3.f, 1.f};
+            uint32_t alpha = e.color & 0x000000ff;
+            DrawRectanglePro(rect, {0.f, 0.5f}, e.ori * 180.f / PI, GetColor(e.color - alpha + alpha/2));
+          }
         }
 
       EndMode2D();

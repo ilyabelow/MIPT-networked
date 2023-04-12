@@ -22,3 +22,7 @@ inline float sign(float in)
 {
   return in > 0.f ? 1.f : in < 0.f ? -1.f : 0.f;
 }
+
+inline float interpolate(float a, float b, float t) {
+  return a + (b - a) * t;
+}
