@@ -35,6 +35,8 @@ struct Vec2 {
 
 template<typename T, int bits_x, int bits_y>
 struct PackedVec2 {
+  static_assert(bits_x + bits_y <= sizeof(T) * 8, "Target type is too small for chosen number of bits");
+
   T packedVal;
   typedef T PackedType;
 
@@ -68,6 +70,8 @@ struct Vec3 {
 
 template<typename T, int bits_x, int bits_y, int bits_z>
 struct PackedVec3 {
+  static_assert(bits_x + bits_y + bits_z <= sizeof(T) * 8, "Target type is too small for chosen number of bits");
+
   T packedVal;
   typedef T PackedType;
 
