@@ -11,18 +11,15 @@ struct bitstream {
 
   template<class T>
   friend bitstream& operator<<(bitstream&, const T&);
-  template<class T>
-  friend bitstream& operator<<(bitstream&&, const T&);
 
   template<class T>
   friend bitstream& operator>>(bitstream&, T&);
   template<class T>
-  friend bitstream& operator>>(bitstream&&, T&);
-  template<class T>
   friend bitstream& operator>>(bitstream&, Skip<T>&&);
-  template<class T>
-  friend bitstream& operator>>(bitstream&&, Skip<T>&&);
 
+  bitstream& start() {
+    return *this;
+  }
 
 private:
   uint8_t *m_data;
@@ -30,13 +27,6 @@ private:
 };
 
 // write
-
-template<class T>
-bitstream& operator<<(bitstream&& s, const T& t) { // r-value variant for in-place/implicit construction
-  memcpy(s.m_data + s.m_offset, &t, sizeof(T));
-  s.m_offset += sizeof(T);
-  return s;
-}
 
 template<class T>
 bitstream& operator<<(bitstream& s, const T& t) {
@@ -55,20 +45,7 @@ bitstream& operator>>(bitstream& s, T& t) {
 }
 
 template<class T>
-bitstream& operator>>(bitstream&& s, T& t) { // r-value variant for in-place/implicit construction
-  memcpy(&t, s.m_data + s.m_offset, sizeof(T));
-  s.m_offset += sizeof(T);
-  return s;
-}
-
-template<class T>
 bitstream& operator>>(bitstream& s, Skip<T>&&) {
-  s.m_offset += sizeof(T);
-  return s;
-}
-
-template<class T>
-bitstream& operator>>(bitstream&& s, Skip<T>&&) {
   s.m_offset += sizeof(T);
   return s;
 }
@@ -82,20 +59,16 @@ struct ruler {
 
   template<class T>
   friend ruler& operator<<(ruler&, const T&);
-  template<class T>
-  friend ruler& operator<<(ruler&&, const T&);
+
+  ruler& start() {
+    return *this;
+  }
 private:
   size_t m_size;
 };
 
 template<class T>
 ruler& operator<<(ruler& r, const T&) {
-  r.m_size += sizeof(T);
-  return r;
-}
-
-template<class T>
-ruler& operator<<(ruler&& r, const T&) { // r-value variant for in-place/implicit construction
   r.m_size += sizeof(T);
   return r;
 }
