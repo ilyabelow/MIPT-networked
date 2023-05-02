@@ -12,7 +12,7 @@
 
 
 static std::vector<Entity> entities;
-static uint16_t my_entity = invalid_entity;
+static uint32_t my_entity = invalid_entity;
 
 void on_new_entity_packet(ENetPacket *packet)
 {
@@ -32,7 +32,7 @@ void on_set_controlled_entity(ENetPacket *packet)
 
 void on_snapshot(ENetPacket *packet)
 {
-  uint16_t eid = invalid_entity;
+  uint32_t eid = invalid_entity;
   float x = 0.f; float y = 0.f; float ori = 0.f;
   deserialize_snapshot(packet, eid, x, y, ori);
   // TODO: Direct adressing, of course!

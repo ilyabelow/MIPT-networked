@@ -21,7 +21,7 @@ void send_new_entity(ENetPeer *peer, const Entity &ent)
   enet_peer_send(peer, 0, packet);
 }
 
-void send_set_controlled_entity(ENetPeer *peer, uint16_t eid)
+void send_set_controlled_entity(ENetPeer *peer, uint32_t eid)
 {
   size_t size = ruler() << E_SERVER_TO_CLIENT_SET_CONTROLLED_ENTITY << eid;
   ENetPacket *packet = enet_packet_create(nullptr, size, ENET_PACKET_FLAG_RELIABLE);
@@ -32,7 +32,7 @@ void send_set_controlled_entity(ENetPeer *peer, uint16_t eid)
 
 typedef PackedVec2<uint8_t, 4, 4> ControlsQuantized;
 
-void send_entity_input(ENetPeer *peer, uint16_t eid, float thr, float ori)
+void send_entity_input(ENetPeer *peer, uint32_t eid, float thr, float ori)
 {
   ControlsQuantized controlsPacked({thr, ori}, {-1., 1.}, {-1., 1.});
 
@@ -45,7 +45,7 @@ void send_entity_input(ENetPeer *peer, uint16_t eid, float thr, float ori)
 
 typedef PackedVec3<uint32_t, 12, 11, 9> TransformQuantized;
 
-void send_snapshot(ENetPeer *peer, uint16_t eid, float x, float y, float ori)
+void send_snapshot(ENetPeer *peer, uint32_t eid, float x, float y, float ori)
 {
   TransformQuantized tmPacked({x, y, ori}, {-16., 16.}, {-8., 8.},  {-PI, PI});
 
@@ -66,12 +66,12 @@ MessageType get_packet_type(ENetPacket *packet)
   bitstream(packet->data) >> Skip<MessageType>{} >> ent;
 }
 
-void deserialize_set_controlled_entity(ENetPacket *packet, uint16_t &eid)
+void deserialize_set_controlled_entity(ENetPacket *packet, uint32_t &eid)
 {
   bitstream(packet->data) >> Skip<MessageType>{} >> eid;
 }
 
-void deserialize_entity_input(ENetPacket *packet, uint16_t &eid, float &thr, float &steer)
+void deserialize_entity_input(ENetPacket *packet, uint32_t &eid, float &thr, float &steer)
 {
   ControlsQuantized ctrlPacked(0);
   bitstream(packet->data) >> Skip<MessageType>{} >> eid >> ctrlPacked;
@@ -83,7 +83,7 @@ void deserialize_entity_input(ENetPacket *packet, uint16_t &eid, float &thr, flo
   steer = ctrlPacked.getYPacked() == neutralPackedValue ? 0.f : ctrl.y;
 }
 
-void deserialize_snapshot(ENetPacket *packet, uint16_t &eid, float &x, float &y, float &ori)
+void deserialize_snapshot(ENetPacket *packet, uint32_t &eid, float &x, float &y, float &ori)
 {
   TransformQuantized tmPacked(0);
   bitstream(packet->data) >> Skip<MessageType>{} >> eid >> tmPacked;

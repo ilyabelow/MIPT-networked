@@ -8,7 +8,7 @@
 #include <map>
 
 static std::vector<Entity> entities;
-static std::map<uint16_t, ENetPeer*> controlledMap;
+static std::map<uint32_t, ENetPeer*> controlledMap;
 
 void on_join(ENetPacket *packet, ENetPeer *peer, ENetHost *host)
 {
@@ -17,10 +17,10 @@ void on_join(ENetPacket *packet, ENetPeer *peer, ENetHost *host)
     send_new_entity(peer, ent);
 
   // find max eid
-  uint16_t maxEid = entities.empty() ? invalid_entity : entities[0].eid;
+  uint32_t maxEid = entities.empty() ? invalid_entity : entities[0].eid;
   for (const Entity &e : entities)
     maxEid = std::max(maxEid, e.eid);
-  uint16_t newEid = maxEid + 1;
+  uint32_t newEid = maxEid + 1;
   uint32_t color = 0xff000000 +
                    0x00440000 * (rand() % 5) +
                    0x00004400 * (rand() % 5) +
@@ -42,7 +42,7 @@ void on_join(ENetPacket *packet, ENetPeer *peer, ENetHost *host)
 
 void on_input(ENetPacket *packet)
 {
-  uint16_t eid = invalid_entity;
+  uint32_t eid = invalid_entity;
   float thr = 0.f; float steer = 0.f;
   deserialize_entity_input(packet, eid, thr, steer);
   for (Entity &e : entities)
