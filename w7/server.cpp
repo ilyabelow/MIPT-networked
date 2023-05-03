@@ -6,9 +6,24 @@
 #include <stdlib.h>
 #include <vector>
 #include <map>
+#include <set>
 
 static std::vector<Entity> entities;
 static std::map<uint32_t, ENetPeer*> controlledMap;
+
+
+
+static int type = 3;
+
+uint32_t genEid() {
+  type = (type + 1) % 3;
+  if (type == 0) {
+    return rand() % (1 << 7);
+  } else if (type == 1) {
+    return (1 << 7) + rand() % ((1 << 14) - (1 << 7));
+  }
+  return (1 << 14) + rand() % ((1 << 30) - (1 << 14));
+}
 
 void on_join(ENetPacket *packet, ENetPeer *peer, ENetHost *host)
 {
@@ -17,14 +32,24 @@ void on_join(ENetPacket *packet, ENetPeer *peer, ENetHost *host)
     send_new_entity(peer, ent);
 
   // find max eid
-  uint32_t maxEid = entities.empty() ? invalid_entity : entities[0].eid;
-  for (const Entity &e : entities)
-    maxEid = std::max(maxEid, e.eid);
-  uint32_t newEid = maxEid + 1;
-  uint32_t color = 0xff000000 +
+//  uint32_t maxEid = entities.empty() ? 0 : entities[0].eid;
+//  for (const Entity &e : entities)
+//    maxEid = std::max(maxEid, e.eid);
+//  uint32_t newEid = maxEid + 1;
+
+// for int packing demo
+  uint32_t newEid = genEid();
+  std::set<uint32_t > takenEids;
+  for (auto& e: entities) takenEids.insert(e.eid);
+  while (takenEids.contains(newEid)) newEid = genEid();
+  std::cout << newEid << std::endl;
+
+  // Alpha is last byte!!!
+  uint32_t color = 0x44000000 * (rand() % 5) +
                    0x00440000 * (rand() % 5) +
                    0x00004400 * (rand() % 5) +
-                   0x00000044 * (rand() % 5);
+                   0x000000ff;
+
   float x = (rand() % 4) * 5.f;
   float y = (rand() % 4) * 5.f;
   Entity ent = {color, x, y, 0.f, (rand() / RAND_MAX) * 3.141592654f, 0.f, 0.f, newEid};
